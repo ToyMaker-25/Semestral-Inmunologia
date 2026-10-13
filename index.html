@@ -161,6 +161,13 @@ h1,h2,h3{font-family:var(--display); text-wrap:balance; margin:0}
 .br .tb i{display:block; height:100%; background:var(--c); border-radius:99px}
 .br .v{font-family:var(--mono); font-size:12.5px; text-align:right; color:var(--muted); font-variant-numeric:tabular-nums}
 .saved{font-size:14.5px; margin:0; padding:8px 12px; border-radius:10px; background:var(--soft)}
+  .linkbtn{border:0; background:none; color:var(--muted); text-decoration:underline; text-underline-offset:3px; cursor:pointer; font-size:13.5px; padding:6px}
+.btn.danger{color:var(--bad); border-color:color-mix(in srgb, var(--bad) 45%, var(--line))}
+.btn.danger.go{background:var(--bad); border-color:var(--bad); color:var(--surface)}
+.adm-in{padding:8px 10px; border-radius:9px; border:1.5px solid var(--line); background:var(--bg); width:100%; min-width:0}
+.adm-in:focus{border-color:var(--pick); outline:none}
+.acts{display:flex; gap:6px; flex-wrap:wrap}
+.acts .btn{padding:5px 10px; font-size:13.5px; border-radius:9px}
 .rev{display:flex; flex-direction:column; gap:10px}
 .rv{border:1px solid var(--line); border-left:5px solid var(--c); border-radius:12px; padding:12px 14px; background:var(--surface)}
 .rv p{margin:3px 0}
@@ -342,7 +349,39 @@ footer{margin-top:28px; color:var(--muted); font-size:13.5px; text-align:center}
     </section>
   </main>
 
-  <footer>Preguntas armadas con la guía del semestral, los PPT del Dr. Díaz y los profetas. Nota mínima para aprobar: 71. A 91–100 · B 81–90 · C 71–80.</footer>
+    <!-- ADMINISTRAR -->
+  <main id="v-admin" class="stack" hidden>
+    <section class="card stack" id="adm-lock">
+      <div><p class="eyebrow">Solo para quien administra</p><h2 style="font-size:28px; margin-top:4px">🔒 Administrar ranking</h2>
+      <p class="sub">Escribe el código para cambiar o borrar intentos del ranking.</p></div>
+      <div class="row"><input type="password" class="adm-in" id="adm-code" style="max-width:280px" placeholder="Código" autocomplete="off"><button type="button" class="btn go" id="adm-enter">Entrar</button></div>
+      <p class="err" id="adm-err" hidden></p>
+    </section>
+    <section class="card stack" id="adm-panel" hidden>
+      <div class="row" style="justify-content:space-between"><div><p class="eyebrow">Firebase · intentos guardados</p><h2 style="font-size:28px; margin-top:4px">🛠️ Administrar ranking</h2></div>
+        <button type="button" class="btn sm" id="adm-exit">🔒 Cerrar</button></div>
+      <p class="sub" id="adm-sum">Cargando…</p>
+      <div class="row">
+        <input type="text" class="adm-in" id="adm-q" style="max-width:280px" placeholder="Buscar por nombre">
+        <div class="seg"><label><input type="radio" name="adm-f" id="adm-f-all" value="all" checked><span>Todos</span></label><label><input type="radio" name="adm-f" id="adm-f-mix" value="mix"><span>🎲 Simulador</span></label><label><input type="radio" name="adm-f" id="adm-f-prof" value="prof"><span>⭐ Profeta</span></label></div>
+      </div>
+      <div id="adm-list"></div>
+      <div class="stack" style="gap:10px">
+        <h3>Borrar en grupo</h3>
+        <div class="row">
+          <button type="button" class="btn danger" data-bulk="vis">🗑️ Borrar los que se ven en la lista</button>
+          <button type="button" class="btn danger" data-bulk="mix">🎲 Vaciar ranking del simulador</button>
+          <button type="button" class="btn danger" data-bulk="prof">⭐ Vaciar ranking del profeta</button>
+          <button type="button" class="btn danger" data-bulk="all">💣 Borrar todos los intentos</button>
+          <button type="button" class="btn danger" data-bulk="stats">🔥 Reiniciar "Más falladas"</button>
+        </div>
+        <div class="confirm" id="adm-confirm" hidden><span id="adm-confirm-t"></span><button type="button" class="btn danger go" id="adm-yes">Sí, borrar</button><button type="button" class="btn" id="adm-no">Cancelar</button></div>
+        <p class="saved" id="adm-msg" hidden></p>
+      </div>
+    </section>
+  </main>
+
+  <footer>Preguntas armadas con la guía del semestral, los PPT del Dr. Díaz y los profetas. Nota mínima para aprobar: 71. A 91–100 · B 81–90 · C 71–80.<br><button type="button" class="linkbtn" id="adm-open">🔒 Administrar ranking</button></footer>
 </div>
 
 <script>
@@ -1076,13 +1115,146 @@ function cargarDificiles(){
   }).catch(function(){ box.innerHTML = '<p class="empty">No se pudieron leer las estadísticas de Firebase.</p>'; });
 }
 
+// ---------- administrar ranking (código guardado como huella SHA-256, no en texto)
+var ADM_HASH = '35f28b6209bdf996e857fbaa807cf287c2d2f9c081978b5cdb725c3f241e499c';
+function sha256(ascii){
+  function rr(v, a){ return (v >>> a) | (v << (32 - a)); }
+  var mp = Math.pow, mw = mp(2, 32), out = '', words = [], i, j;
+  ascii = unescape(encodeURIComponent(ascii));
+  var bits = ascii.length * 8, hash = [], k = [], pc = 0, comp = {};
+  for (var c = 2; pc < 64; c++){ if (!comp[c]){ for (i = 0; i < 313; i += c) comp[i] = c; hash[pc] = (mp(c, .5) * mw) | 0; k[pc++] = (mp(c, 1 / 3) * mw) | 0; } }
+  ascii += '\x80';
+  while (ascii.length % 64 - 56) ascii += '\x00';
+  for (i = 0; i < ascii.length; i++){ j = ascii.charCodeAt(i); words[i >> 2] |= j << ((3 - i) % 4) * 8; }
+  words[words.length] = ((bits / mw) | 0); words[words.length] = bits;
+  for (j = 0; j < words.length;){
+    var w = words.slice(j, j += 16), old = hash; hash = hash.slice(0, 8);
+    for (i = 0; i < 64; i++){
+      var w15 = w[i - 15], w2 = w[i - 2], a = hash[0], e = hash[4];
+      var t1 = hash[7] + (rr(e, 6) ^ rr(e, 11) ^ rr(e, 25)) + ((e & hash[5]) ^ ((~e) & hash[6])) + k[i] +
+        (w[i] = (i < 16) ? w[i] : (w[i - 16] + (rr(w15, 7) ^ rr(w15, 18) ^ (w15 >>> 3)) + w[i - 7] + (rr(w2, 17) ^ rr(w2, 19) ^ (w2 >>> 10))) | 0);
+      var t2 = (rr(a, 2) ^ rr(a, 13) ^ rr(a, 22)) + ((a & hash[1]) ^ (a & hash[2]) ^ (hash[1] & hash[2]));
+      hash = [(t1 + t2) | 0].concat(hash); hash[4] = (hash[4] + t1) | 0;
+    }
+    for (i = 0; i < 8; i++) hash[i] = (hash[i] + old[i]) | 0;
+  }
+  for (i = 0; i < 8; i++) for (j = 3; j + 1; j--){ var b = (hash[i] >> (j * 8)) & 255; out += (b < 16 ? '0' : '') + b.toString(16); }
+  return out;
+}
+var ADM = {on: false, list: [], edit: null, del: null, bulk: null};
+try { ADM.on = sessionStorage.getItem('inmuno-sem-adm') === ADM_HASH; } catch(e){}
+function abrirAdmin(){
+  $('adm-lock').hidden = ADM.on; $('adm-panel').hidden = !ADM.on;
+  if (ADM.on) cargarAdmin(); else { $('adm-err').hidden = true; $('adm-code').value = ''; setTimeout(function(){ $('adm-code').focus(); }, 50); }
+}
+function entrarAdmin(){
+  if (sha256($('adm-code').value.trim()) === ADM_HASH){
+    ADM.on = true; try { sessionStorage.setItem('inmuno-sem-adm', ADM_HASH); } catch(e){}
+    abrirAdmin();
+  } else { $('adm-err').textContent = 'Código incorrecto.'; $('adm-err').hidden = false; }
+}
+$('adm-open').addEventListener('click', function(){
+  if (!$('v-quiz').hidden && S && !S.fin){ pedirFin(S.resp.filter(function(v){ return v === null; }).length); return; }
+  vista('admin');
+});
+$('adm-enter').addEventListener('click', entrarAdmin);
+$('adm-code').addEventListener('keydown', function(e){ if (e.key === 'Enter') entrarAdmin(); });
+$('adm-exit').addEventListener('click', function(){ ADM.on = false; try { sessionStorage.removeItem('inmuno-sem-adm'); } catch(e){} vista('home'); });
+function admMsg(t){ var m = $('adm-msg'); m.textContent = t; m.hidden = !t; }
+function cargarAdmin(){
+  $('adm-sum').textContent = 'Cargando…';
+  fb('/intentos').then(function(j){
+    ADM.list = j ? Object.keys(j).map(function(id){ var x = j[id] || {}; x.id = id; return x; }).filter(function(x){ return typeof x.p === 'number'; }) : [];
+    ADM.list.sort(function(a, b){ return (b.d || 0) - (a.d || 0); });
+    ADM.edit = ADM.del = null; pintarAdmin();
+  }).catch(function(e){ $('adm-sum').textContent = 'No se pudieron leer los intentos de Firebase (' + (e && e.message || 'sin conexión') + ').'; $('adm-list').innerHTML = ''; });
+}
+function admVisibles(){
+  var q = slug($('adm-q').value), f = valor('adm-f') || 'all';
+  return ADM.list.filter(function(x){
+    var k = x.k === 'prof' ? 'prof' : 'mix';
+    return (f === 'all' || f === k) && (!q || (x.s || slug(x.n || '')).indexOf(q) >= 0);
+  });
+}
+function pintarAdmin(){
+  var V = admVisibles(), personas = {};
+  ADM.list.forEach(function(x){ personas[x.s] = 1; });
+  $('adm-sum').textContent = ADM.list.length + ' intentos guardados de ' + Object.keys(personas).length + ' personas. Se muestran ' + Math.min(V.length, 200) + '.';
+  var box = $('adm-list');
+  if (!V.length){ box.innerHTML = '<p class="empty">No hay intentos con ese filtro.</p>'; return; }
+  var t = document.createElement('table');
+  t.innerHTML = '<thead><tr><th>Nombre</th><th>Nota</th><th>Tipo</th><th>Preguntas</th><th>Cuándo</th><th></th></tr></thead>';
+  var tb = document.createElement('tbody');
+  V.slice(0, 200).forEach(function(x){
+    var tr = document.createElement('tr'); tr.dataset.id = x.id;
+    var tipo = (x.k === 'prof' ? '⭐ profeta' : '🎲 simulador') + (x.m === 'examen' ? '' : ' · ' + (x.m === 'falladas' ? 'repaso' : x.m || ''));
+    if (ADM.edit === x.id){
+      tr.innerHTML = '<td><input class="adm-in" id="ed-n" maxlength="40"></td><td><input class="adm-in" id="ed-p" type="number" min="0" max="100" style="width:80px"></td><td></td><td></td><td></td>' +
+        '<td><div class="acts"><button type="button" class="btn go" data-a="save">Guardar</button><button type="button" class="btn" data-a="cancel">Cancelar</button></div></td>';
+      tr.querySelector('#ed-n').value = x.n || ''; tr.querySelector('#ed-p').value = x.p;
+      [tipo, String(x.t || ''), fecha(x.d)].forEach(function(v, i){ tr.children[i + 2].textContent = v; });
+    } else {
+      [x.n || '—', x.p + ' (' + letra(x.p) + ')', tipo, String(x.t || ''), x.d ? fecha(x.d) : ''].forEach(function(v, i){ var td = document.createElement('td'); td.textContent = v; if (i === 1 || i === 3) td.className = 'n'; tr.appendChild(td); });
+      var td = document.createElement('td');
+      td.innerHTML = ADM.del === x.id ? '<div class="acts"><button type="button" class="btn danger go" data-a="del-yes">Sí, borrar</button><button type="button" class="btn" data-a="cancel">No</button></div>'
+        : '<div class="acts"><button type="button" class="btn" data-a="edit">✏️ Cambiar</button><button type="button" class="btn danger" data-a="del">🗑️ Borrar</button></div>';
+      tr.appendChild(td);
+    }
+    tb.appendChild(tr);
+  });
+  t.appendChild(tb); var w = document.createElement('div'); w.className = 'tbl'; w.appendChild(t); box.innerHTML = ''; box.appendChild(w);
+}
+$('adm-list').addEventListener('click', function(e){
+  var b = e.target.closest('[data-a]'); if (!b) return;
+  var id = b.closest('tr').dataset.id, a = b.dataset.a;
+  if (a === 'edit'){ ADM.edit = id; ADM.del = null; pintarAdmin(); return; }
+  if (a === 'del'){ ADM.del = id; ADM.edit = null; pintarAdmin(); return; }
+  if (a === 'cancel'){ ADM.edit = ADM.del = null; pintarAdmin(); return; }
+  if (a === 'save'){
+    var nom = $('ed-n').value.trim(), p = Math.round(+$('ed-p').value);
+    if (!nom || !(p >= 0 && p <= 100)){ admMsg('Revisa el nombre y que la nota esté entre 0 y 100.'); return; }
+    fb('/intentos/' + id, {method: 'PATCH', body: {n: nom, s: slug(nom) || 'anon', p: p}})
+      .then(function(){ admMsg('✅ Intento cambiado.'); cargarAdmin(); }).catch(function(){ admMsg('No se pudo guardar el cambio en Firebase.'); });
+  }
+  if (a === 'del-yes'){
+    fb('/intentos/' + id, {method: 'DELETE'})
+      .then(function(){ admMsg('🗑️ Intento borrado.'); cargarAdmin(); }).catch(function(){ admMsg('No se pudo borrar en Firebase.'); });
+  }
+});
+$('adm-q').addEventListener('input', pintarAdmin);
+document.querySelectorAll('input[name="adm-f"]').forEach(function(r){ r.addEventListener('change', pintarAdmin); });
+function admIds(kind){
+  if (kind === 'vis') return admVisibles().map(function(x){ return x.id; });
+  return ADM.list.filter(function(x){ var k = x.k === 'prof' ? 'prof' : 'mix'; return kind === 'all' || kind === k; }).map(function(x){ return x.id; });
+}
+document.querySelectorAll('[data-bulk]').forEach(function(b){
+  b.addEventListener('click', function(){
+    var kind = b.dataset.bulk, n = kind === 'stats' ? 0 : admIds(kind).length;
+    if (kind !== 'stats' && !n){ admMsg('No hay intentos para borrar con esa opción.'); return; }
+    ADM.bulk = kind;
+    $('adm-confirm-t').textContent = kind === 'stats' ? '¿Borrar todas las estadísticas de "Más falladas"? Las notas del ranking no se tocan.' :
+      '¿Borrar ' + n + (n === 1 ? ' intento' : ' intentos') + (kind === 'vis' ? ' que se ven en la lista' : kind === 'mix' ? ' del simulador por temas' : kind === 'prof' ? ' del semestral del profeta' : ' (todo el ranking)') + '? No se puede deshacer.';
+    $('adm-confirm').hidden = false;
+  });
+});
+$('adm-no').addEventListener('click', function(){ $('adm-confirm').hidden = true; ADM.bulk = null; });
+$('adm-yes').addEventListener('click', function(){
+  var kind = ADM.bulk; $('adm-confirm').hidden = true; ADM.bulk = null; if (!kind) return;
+  var req;
+  if (kind === 'stats') req = fb('/stats', {method: 'DELETE'});
+  else { var body = {}; admIds(kind).forEach(function(id){ body[id] = null; }); req = fb('/intentos', {method: 'PATCH', body: body}); }
+  req.then(function(){ admMsg(kind === 'stats' ? '🔥 "Más falladas" quedó en cero.' : '🗑️ Listo, intentos borrados.'); cargarAdmin(); })
+     .catch(function(){ admMsg('No se pudo borrar en Firebase.'); });
+});
+
 // ---------- vistas
 function vista(v){
-  ['home', 'quiz', 'res', 'rank', 'hard'].forEach(function(k){ $('v-' + k).hidden = k !== v; });
+  ['home', 'quiz', 'res', 'rank', 'hard', 'admin'].forEach(function(k){ $('v-' + k).hidden = k !== v; });
   document.querySelectorAll('[data-tab]').forEach(function(b){ b.setAttribute('aria-pressed', b.dataset.tab === v ? 'true' : 'false'); });
   if (v === 'rank') cargarRanking();
   if (v === 'hard') cargarDificiles();
   if (v === 'home') pintarUltimo();
+  if (v === 'admin') abrirAdmin();
   window.scrollTo({top: 0});
 }
 document.querySelectorAll('[data-tab]').forEach(function(b){
